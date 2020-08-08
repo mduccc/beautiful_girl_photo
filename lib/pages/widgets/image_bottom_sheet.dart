@@ -1,17 +1,30 @@
 import 'dart:ui';
-
-import 'package:beautiful_girl_photo/is_mobile.dart';
+import 'package:beautiful_girl_photo/models/image_model.dart';
+import 'package:beautiful_girl_photo/notifies/images_notify.dart';
+import 'package:beautiful_girl_photo/pages/widgets/blur_button.dart';
+import 'package:beautiful_girl_photo/pages/widgets/heart_btn.dart';
+import 'package:beautiful_girl_photo/utils/is_mobile.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ImageBottomSheet extends StatefulWidget {
-  final String imageUrl;
-  final _statusBarHeight;
-  final List<String> _imagesUrl;
-  final int index;
+  final Key key;
+  final ImageModel img;
+  final double statusBarHeight;
+  final double navigateBarHeight;
+  final List<ImageModel> imgs;
+  final int indexStart;
+  final ImagesNotify notify;
 
   ImageBottomSheet(
-      this.imageUrl, this._statusBarHeight, this._imagesUrl, this.index);
+      {this.key,
+      this.img,
+      this.statusBarHeight,
+      this.navigateBarHeight,
+      this.imgs,
+      this.indexStart,
+      this.notify})
+      : super(key: key);
 
   @override
   _ImageBottomSheetState createState() => _ImageBottomSheetState();
@@ -19,12 +32,14 @@ class ImageBottomSheet extends StatefulWidget {
 
 class _ImageBottomSheetState extends State<ImageBottomSheet> {
   PageController _pageController;
+  ImageModel _currentImg;
 
   @override
   void initState() {
     super.initState();
+    _currentImg = widget.imgs[widget.indexStart];
     _pageController =
-        PageController(initialPage: widget.index, viewportFraction: 1);
+        PageController(initialPage: widget.indexStart, viewportFraction: 1);
   }
 
   @override
@@ -44,35 +59,75 @@ class _ImageBottomSheetState extends State<ImageBottomSheet> {
         PageView(
             scrollDirection: Axis.vertical,
             controller: _pageController,
-            children: widget._imagesUrl.map((ele) => _image(ele)).toList()),
-        Positioned(
-          bottom: widget._statusBarHeight - 10,
-          right: 10,
-          child: GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
+            onPageChanged: (page) {
+              _currentImg = widget.imgs[page];
+
+              setState(() {});
             },
-            child: Container(
-              width: 35,
-              height: 35,
-              padding: EdgeInsets.zero,
-              alignment: FractionalOffset.center,
-              decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle),
-              child: Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 20,
-              ),
+            children: widget.imgs.map((ele) => _image(ele)).toList()),
+        Positioned(
+          top: widget.statusBarHeight + 10,
+          right: 10,
+          child: BlurButton(
+            child: Icon(
+              Icons.clear,
+              color: Colors.white,
+              size: 20,
             ),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
+        Positioned(
+          bottom: widget.navigateBarHeight + 10,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    _currentImg.heartCount == 0
+                        ? ''
+                        : '+${_currentImg.heartCount.toStringAsFixed(0)}',
+                    style: TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                  HeartBtn(hasSelected: _currentImg.heart)
+                ],
+              ),
+              SizedBox(width: 7),
+              BlurButton(
+                child: Icon(
+                  Icons.arrow_downward,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                opacity: 0.1,
+                onPressed: () {
+                  widget.notify.save(_currentImg);
+                },
+              ),
+              SizedBox(width: 7),
+              BlurButton(
+                child: Icon(
+                  Icons.share,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                opacity: 0.1,
+              ),
+              SizedBox(width: 7),
+            ],
           ),
         )
       ],
     );
   }
 
-  Widget _image(String imgUrl) => Column(
+  Widget _image(ImageModel _img) => Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -81,10 +136,10 @@ class _ImageBottomSheetState extends State<ImageBottomSheet> {
             child: Container(
                 constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height -
-                        widget._statusBarHeight -
+                        widget.statusBarHeight -
                         20),
                 margin: EdgeInsets.only(
-                    top: widget._statusBarHeight + 10,
+                    top: widget.statusBarHeight + 10,
                     bottom: 10,
                     left: 5,
                     right: 5),
@@ -120,12 +175,12 @@ class _ImageBottomSheetState extends State<ImageBottomSheet> {
                           },
                           placeholderFadeInDuration:
                               Duration(milliseconds: 1000),
-                          imageUrl: imgUrl,
+                          imageUrl: _img.thumbnail,
                           fit: BoxFit.scaleDown,
                           alignment: FractionalOffset.center,
                         )
                       : Image.network(
-                          imgUrl,
+                          _img.thumbnail,
                           fit: BoxFit.scaleDown,
                           alignment: FractionalOffset.center,
                         ),
